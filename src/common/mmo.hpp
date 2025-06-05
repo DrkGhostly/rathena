@@ -11,6 +11,8 @@
 #include "cbasetypes.hpp"
 #include "db.hpp"
 #include "timer.hpp" // t_tick
+#include <memory>
+#include <vector>
 
 #ifndef PACKETVER
 	#error Please define PACKETVER in src/config/packets.hpp
@@ -274,6 +276,22 @@ enum e_mode {
 #define MD_MASK 0x000FFFF
 #define ATR_MASK 0x0FF0000
 #define CL_MASK 0xF000000
+
+struct s_aura_effect {
+	uint16 effect_id = 0;
+	uint32 replay_interval = 0;
+	int32 replay_tid = INVALID_TIMER;
+};
+
+// 多种单位的结构体都会嵌入的一个数据结构
+// 这里定义的内容在 map_session_data, npc_data, mob_data, homun_data,
+// mercenary_data, elemental_data 结构体中的 ucd 成员中都会同时拥有
+struct s_unit_common_data {
+		struct s_ucd_aura {
+			uint32 id = 0;			// 该单位启用的光环编号
+			std::vector<std::shared_ptr<s_aura_effect>> effects;	// 该单位生效的特效组合
+		} aura;
+};
 
 // Questlog states
 enum e_quest_state : uint8 {

@@ -25,6 +25,7 @@
 
 #include "achievement.hpp"
 #include "atcommand.hpp"
+#include "aura.hpp"
 #include "battle.hpp"
 #include "battleground.hpp"
 #include "cashshop.hpp"
@@ -127,7 +128,7 @@ static struct block_list *bl_list[BL_LIST_MAX];
 static int32 bl_list_count = 0;
 
 #ifndef MAP_MAX_MSG
-	#define MAP_MAX_MSG 1550
+	#define MAP_MAX_MSG 2000
 #endif
 
 struct map_data map[MAX_MAP_PER_SERVER];
@@ -3754,6 +3755,7 @@ int32 map_delmap(char* mapname){
 
 /// Initializes map flags and adjusts them depending on configuration.
 void map_flags_init(void){
+
 	for (int32 i = 0; i < map_num; i++) {
 		struct map_data *mapdata = &map[i];
 		union u_mapflag_args args = {};
@@ -4976,6 +4978,18 @@ bool map_setmapflag_sub(int16 m, enum e_mapflag mapflag, bool status, union u_ma
 			}
 			mapdata->setMapFlag(mapflag, status);
 			break;
+		case MF_NOAURA:
+	{
+		struct s_mapiterator* iter = mapit_getallusers();
+		map_session_data* pl_sd = nullptr;
+		for (pl_sd = (TBL_PC*)mapit_first(iter); mapit_exists(iter); pl_sd = (TBL_PC*)mapit_next(iter)) {
+			if (!pl_sd || pl_sd->m != m)
+				continue;
+			clif_refresh(pl_sd);
+		}
+		mapit_free(iter);
+		break;
+	}
 		default:
 			mapdata->setMapFlag(mapflag, status);
 			break;
@@ -5040,6 +5054,7 @@ void MapServer::finalize(){
 	do_final_achievement();
 	do_final_script();
 	do_final_instance();
+	do_final_aura();
 	do_final_itemdb();
 	do_final_storage();
 	do_final_guild();
@@ -5416,6 +5431,7 @@ bool MapServer::initialize( int32 argc, char *argv[] ){
 #endif
 	do_init_script();
 	do_init_itemdb();
+	do_init_aura();
 	do_init_channel();
 	do_init_cashshop();
 	do_init_skill();

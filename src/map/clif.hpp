@@ -12,6 +12,7 @@
 #include <common/mmo.hpp>
 #include <common/timer.hpp> // t_tick
 
+#include "aura.hpp"
 #include "packets.hpp"
 #include "script.hpp"
 #include "skill.hpp"
@@ -1508,5 +1509,7 @@ void clif_set_npc_window_pos_percent(map_session_data& sd, int32 x, int32 y);
 void clif_noask_sub( map_session_data& sd, map_session_data& tsd, int32 type );
 
 void clif_specialpopup(map_session_data& sd, int32 id);
+
+void clif_send_auras(struct block_list* bl, enum send_target target, bool ignore_when_hidden, enum e_aura_special flag);
 
 #endif /* CLIF_HPP */

@@ -522,6 +522,7 @@
 	export_constant(MF_NOBANK);
 	export_constant(MF_SPECIALPOPUP);
 	export_constant(MF_NOMACROCHECKER);
+	export_constant(MF_NOAURA);
 
 	/* setcell types */
 	export_constant(CELL_WALKABLE);

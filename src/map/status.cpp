@@ -9532,6 +9532,68 @@ status_change *status_get_sc(struct block_list *bl)
 	return nullptr;
 }
 
+struct s_unit_common_data *status_get_ucd(struct block_list* bl)
+{
+	if( bl )
+	switch (bl->type) {
+		case BL_PC:  return &((TBL_PC*)bl)->ucd;
+		case BL_MOB: return &((TBL_MOB*)bl)->ucd;
+		case BL_NPC: return &((TBL_NPC*)bl)->ucd;
+		case BL_HOM: return &((TBL_HOM*)bl)->ucd;
+		case BL_MER: return &((TBL_MER*)bl)->ucd;
+		case BL_PET: return &((TBL_PET*)bl)->ucd;
+		case BL_ELEM: return &((TBL_ELEM*)bl)->ucd;
+	}
+	return NULL;
+}
+
+//************************************
+// Method:      status_ishiding
+// Description: 与 pc_ishiding 类似, 可以判断一个单位是否隐藏
+// Access:      public 
+// Parameter:   struct block_list * bl
+//				该参数用于指定需要判断哪个 bl 单位的是否处于隐藏状态
+// Parameter:   struct block_list * observer_bl
+//				观察者的 bl 指针 (默认为 nullptr 表示没有观察者, 无需考虑 cloak 影响)
+//				通常情况下一个如果被检测的 bl 单位是一个 npc,
+//				那么可能会因为这个 npc 已经在某个 observer_bl 的视野中被隐藏/显示 (cloakonnpc/cloakoffnpc)
+//				因此想判断一个目标 bl 单位的是否处于隐藏状态的时候, 把 observer_bl 带上判断就会代入观察者视野
+// Returns:     bool
+// Author:      Sola丶小克(CairoLee)  2021/12/29 22:52
+//************************************ 
+bool status_ishiding(struct block_list* bl, struct block_list* observer_bl) {
+	if (!bl) return false;
+	status_change* sc = status_get_sc(bl);
+	if (!sc) return false;
+
+	int option = sc->option;
+
+	if (observer_bl && observer_bl->type == BL_PC && bl->type == BL_NPC && !sc->cloak_reverting) {
+		map_session_data* sd = BL_CAST(BL_PC, observer_bl);
+
+		if (std::find(sd->cloaked_npc.begin(), sd->cloaked_npc.end(), bl->id) != sd->cloaked_npc.end()) {
+			option ^= OPTION_CLOAK;
+		}
+	}
+
+	return (option & (OPTION_HIDE | OPTION_CLOAK | OPTION_CHASEWALK)) != 0;
+}
+
+//************************************
+// Method:      status_isinvisible
+// Description: 与 pc_isinvisible 类似, 可以判断一个单位是否处于不可见状态
+// Access:      public 
+// Parameter:   struct block_list * bl
+// Returns:     bool
+// Author:      Sola丶小克(CairoLee)  2020/10/11 17:53
+//************************************
+bool status_isinvisible(struct block_list* bl) {
+	if (!bl) return false;
+	status_change* sc = status_get_sc(bl);
+	if (!sc) return false;
+	return (sc->option & OPTION_INVISIBLE) != 0;
+}
+
 /**
  * Initiate (memset) the status change data of an object
  * @param bl: Object whose sc data to memset [PC|MOB|HOM|MER|ELEM|NPC]
@@ -14059,7 +14121,6 @@ int32 status_change_end( struct block_list* bl, enum sc_type type, int32 tid ){
 #endif
 
 	clif_status_change(bl,status_icon,0,0,0,0,0);
-
 	if( opt_flag[SCF_NONPLAYER] ) // bugreport:681
 		clif_changeoption2( *bl );
 	else if (!disable_opt_flag && (opt_flag[SCF_SENDOPTION] || opt_flag[SCF_ONTOUCH] || opt_flag[SCF_UNITMOVE] || opt_flag[SCF_NONPLAYER] || opt_flag[SCF_SENDLOOK])) {
@@ -14072,6 +14133,10 @@ int32 status_change_end( struct block_list* bl, enum sc_type type, int32 tid ){
 			clif_changelook(bl,LOOK_CLOTHES_COLOR,cap_value(sd->status.clothes_color,0,battle_config.max_cloth_color));
 			clif_changelook(bl,LOOK_BODY2,cap_value(sd->status.body,0,battle_config.max_body_style));
 		}
+		    // 将上面的 clif_changeoption 转移到下面来
+		    // 否则在 clif_changeoption 中对自己发送特殊效果 (202 / 362) 信息后, 会被
+		   // clif_changelook(bl,LOOK_BASE,sd->vd.class_); 清空掉, 导致恢复隐匿/伪装后自己无法看到特殊效果
+		    clif_changeoption(bl);
 	}
 	if (calc_flag.any()) {
 #ifndef RENEWAL

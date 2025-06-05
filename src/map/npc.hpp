@@ -231,6 +231,8 @@ struct npc_data : public block_list {
 		int32 removal_tid;
 	} dynamicnpc;
 
+	struct s_unit_common_data ucd;
+
 #ifdef MAP_GENERATOR
 	struct navi_link navi; // for warps and the src of npcs
 	std::vector<navi_link> links; // for extra links, like warper npc

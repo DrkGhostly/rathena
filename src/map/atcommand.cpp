@@ -23,6 +23,7 @@
 #include <common/utils.hpp>
 
 #include "achievement.hpp"
+#include "aura.hpp"
 #include "battle.hpp"
 #include "buyingstore.hpp"
 #include "channel.hpp"
@@ -4535,6 +4536,50 @@ ACMD_FUNC(reloadbarterdb){
 	return 0;
 }
 
+ACMD_FUNC(reloadauradb) {
+	aura_reload();
+
+	struct block_list* bl = nullptr;
+	struct s_mapiterator* iter = mapit_geteachiddb();
+	for (bl = (struct block_list*)mapit_first(iter); mapit_exists(iter); bl = (struct block_list*)mapit_next(iter)) {
+		aura_effects_refill(bl);
+		aura_refresh_client(bl);
+	}
+	mapit_free(iter);
+
+	clif_displaymessage(fd, msg_txt(sd, 1805)); // Aura database has been reloaded.
+
+	return 0;
+}
+
+ACMD_FUNC(aura) {
+	uint32 aura_id = 0;
+
+	if (!message || !*message || sscanf(message, "%11d", &aura_id) < 1) {
+		clif_displaymessage(fd, msg_txt(sd, 1800));	// 使用方法: @aura <光环编号, 若设为 0 则取消光环>
+		clif_displaymessage(fd, msg_txt(sd, 1801));	// 光环编号定义在 db/aura_db.yml 的光环组合数据库中, 更多信息请查看数据库顶部的注释.
+		return -1;
+	}
+
+	aura_id = max(aura_id, 0);
+
+	if (aura_id && !aura_search(aura_id)) {
+		clif_displaymessage(fd, msg_txt(sd, 1804));	// 很抱歉, 指定的光环编号无效, 请检查后重新输入.
+		return -1;
+	}
+
+	aura_make_effective(sd, aura_id);
+
+	if (aura_id != 0) {
+		clif_displaymessage(fd, msg_txt(sd, 1802));	// 已激活指定的光环效果.
+	}
+	else {
+		clif_displaymessage(fd, msg_txt(sd, 1803));	// 已关闭光环效果.
+	}
+
+	return 0;
+}
+
 ACMD_FUNC(reloadlogconf){
 	nullpo_retr(-1, sd);
 
@@ -4781,6 +4826,8 @@ ACMD_FUNC(mapinfo) {
 		strcat(atcmd_output, " NoDrop |");
 	if (map_getmapflag(m_id, MF_NOSKILL))
 		strcat(atcmd_output, " NoSkill |");
+	if (map_getmapflag(m_id, MF_NOAURA))
+		strcat(atcmd_output, " NoAura |");
 	if (map_getmapflag(m_id, MF_NOICEWALL))
 		strcat(atcmd_output, " NoIcewall |");
 	if (map_getmapflag(m_id, MF_ALLOWKS))
@@ -11708,6 +11755,8 @@ void atcommand_basecommands(void) {
 		ACMD_DEFR(roulette, ATCMD_NOCONSOLE|ATCMD_NOAUTOTRADE),
 		ACMD_DEF(setcard),
 		ACMD_DEF(macrochecker),
+		ACMD_DEF(aura),
+		ACMD_DEF(reloadauradb),
 	};
 	AtCommandInfo* atcommand;
 	int32 i;

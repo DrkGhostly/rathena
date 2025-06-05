@@ -1072,6 +1072,59 @@ static int32 clif_setlevel(struct block_list* bl) {
 	return lv;
 }
 
+//************************************
+// Method:      clif_send_auras_single
+// Description: 将 bl 的光环效果信息发送给 tsd 的客户端
+// Access:      public 
+// Parameter:   struct block_list * bl
+// Parameter:   map_session_data * dsd
+// Returns:     void
+// Author:      Sola丶小克(CairoLee)  2020/09/26 16:38
+//************************************
+void clif_send_auras_single(struct block_list* bl, map_session_data* tsd) {
+	if (!bl || !tsd || bl->m == -1) return;
+
+	struct s_unit_common_data* ucd = status_get_ucd(bl);
+	if (!ucd) return;
+	if (aura_need_hiding(bl, tsd)) return;
+
+	if (map_getmapflag(bl->m, MF_NOAURA)) return;
+
+	for (auto it : ucd->aura.effects) {
+		if (it->replay_tid != INVALID_TIMER) continue;
+		clif_specialeffect_single(bl, it->effect_id, tsd->fd);
+	}
+}
+
+//************************************
+// Method:      clif_send_auras
+// Description: 将 sd 的光环信息发送给指定范围的其他客户端
+// Access:      public 
+// Parameter:   struct block_list * bl
+// Parameter:   enum send_target target
+// Parameter:   bool ignore_when_hidden 若角色处于隐藏状态则不发送光环信息
+// Parameter:   enum e_aura_special flag 指定仅发送某些特殊效果
+// Returns:     void
+// Author:      Sola丶小克(CairoLee)  2020/10/11 11:49
+//************************************
+void clif_send_auras(struct block_list* bl, enum send_target target, bool ignore_when_hidden, enum e_aura_special flag) {
+	if (!bl || bl->m == -1) return;
+
+	if (map_getmapflag(bl->m, MF_NOAURA)) return;
+
+	if (aura_need_hiding(bl) && ignore_when_hidden)
+		return;
+
+	struct s_unit_common_data* ucd = status_get_ucd(bl);
+	if (!ucd) return;
+
+	for (auto it : ucd->aura.effects) {
+		if (it->replay_tid != INVALID_TIMER) continue;
+		if (flag != AURA_SPECIAL_NOTHING && (aura_special(it->effect_id) & flag) != flag) continue;
+		clif_specialeffect(bl, it->effect_id, target);
+	}
+}
+
 /*==========================================
  * Prepares 'unit standing/spawning' packet
  *------------------------------------------*/
@@ -1237,6 +1290,16 @@ static void clif_set_unit_idle( struct block_list* bl, bool walking, send_target
 		p.GID = disguised_bl_id( bl->id );
 #endif
 		clif_send(&p, sizeof(p), bl, SELF);
+	}
+		if (tbl->type == BL_PC) {
+		// 若封包发送的目标是一个玩家单位,
+		// 那么这里绘制 bl 的光环效果给到 tbl 对应的玩家客户端
+		map_session_data* tsd = BL_CAST(BL_PC, tbl);
+		clif_send_auras_single(bl, tsd);
+	}
+	else {
+		// 否则广播给 target 指定范围玩家
+		clif_send_auras(bl, target, false, AURA_SPECIAL_NOTHING);
 	}
 }
 

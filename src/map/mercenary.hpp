@@ -54,6 +54,8 @@ struct s_mercenary_data : public block_list {
 	int32 contract_timer;
 
 	unsigned devotion_flag : 1;
+
+	struct s_unit_common_data ucd;
 };
 
 struct view_data * mercenary_get_viewdata(uint16 class_);

@@ -684,6 +684,7 @@ enum e_mapflag : int16 {
 	MF_NOBANK,
 	MF_SPECIALPOPUP,
 	MF_NOMACROCHECKER,
+	MF_NOAURA,
 	MF_MAX
 };
 
